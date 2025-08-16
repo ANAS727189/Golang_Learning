@@ -1,40 +1,94 @@
-Allowing yourself to do multiple tasks but not at the same time - Concurrency
-All tasks at the same time not one by one - Parallelism
-Eg. of instagram :-
-Suppose you are eating rice and seeing the insta reels, now a notification came, and you want to open the notification, and also want to turn the A.C on while eating the rice
-Concurrency - You will first click on the notification see it, then turn on the A.C and then eat the rice
-Parallelism - You will simulataneously eat rice, see the notification and turn the A.C on. 
-<img src="./concurrencyvsparallel.png">
+# Concurrency and Parallelism in Go
 
+### Concurrency vs Parallelism
 
-Go routines - Lightweight threads managed by the Go runtime. - Flexible stack - 2KB
-Thread - Managed by the OS. - Fixed stack - 1MB
+- **Concurrency**: Allowing yourself to handle multiple tasks, but **not at the exact same time**.  
+- **Parallelism**: Executing multiple tasks **at the same time**, not one after another.  
 
- GO ROUTINES IS THE WAY WE ACHIEVE PARALLELSIM IN GOLANG 
- Go runtime can fire up more threads without getting permisison from OS. More control is with go runtime.
+**Example (Instagram analogy):**  
+Suppose you are eating rice and watching Instagram reels. Suddenly, you get a notification, and you also want to turn on the A.C.
 
+- **Concurrency**:  
+  You first check the notification, then turn on the A.C., and finally continue eating rice. Tasks are interleaved, but not simultaneous.  
 
-MOTO OF GOLANG - "DO NOT COMMUNICATE BY SHARING MEMORY; INSTEAD SHARE MEMORY BY COMMUNICATING".
+- **Parallelism**:  
+  You **simultaneously** eat rice, check the notification, and turn on the A.C. at the same time.  
 
+<img src="./concurrencyvsparallel.png" alt="Concurrency vs Parallelism" width="400" />
 
-when using go routines in go you have to also use wait groups to wait for all goroutines to finish.
-wait groups are basically an advanced version of time.Sleep().
-3 functions of wait groups :-
-1. Add(int): Increments the WaitGroup counter by the specified number.
-2. Done(): Decrements the WaitGroup counter by one.
-3. Wait(): Blocks until the WaitGroup counter is zero.
+---
 
+### Goroutines
 
+- **Goroutines**: Lightweight threads managed by the Go runtime.  
+  - Flexible stack (starts at ~2KB).  
+- **Threads**: Managed by the operating system.  
+  - Fixed stack (usually ~1MB).  
 
-Mutex is a mutual exclusion lock. The zero value for a mutex is an unlocked mutex. A mutex must not be copied after first use. 
-Lock/Unlock mutex :- It basically provides you a lock over memory when one go routine is working and till then it will not allow any other to use this memory. 
+✅ **In Go, goroutines are the way we achieve concurrency (and parallelism when multiple CPU cores are available).**  
 
- Read write mutex :- Allow multiple go routines for sharing resource for reading purposes but does not allow to write on memory when one go routine is working.
+The Go runtime can create many goroutines without asking the OS for new threads, giving Go more control and efficiency.
 
+---
 
- Use go run --race . for checking for race condition errors in go file -> Gives exit status 66
- It can be solved using mutex
+### Go’s Motto
 
- Channels - Channels are a way by which go routines talk to each other by passing value
- Channels allow you to pass them value only if somebody is listening to it otherwise it will give a deadlock error
- Have to use wait groups for channels 
+> **"Do not communicate by sharing memory; instead, share memory by communicating."**
+
+This philosophy is at the core of Go’s concurrency model.
+
+---
+
+### WaitGroups
+
+When using goroutines, you often need to **wait for all of them to finish**. For this, Go provides **WaitGroups**.
+
+A WaitGroup is like an advanced version of `time.Sleep()`, but more precise and safe.  
+
+**Functions of WaitGroup:**
+1. **Add(int)** → Increments the counter by the given number of goroutines.  
+2. **Done()** → Decrements the counter by one when a goroutine finishes.  
+3. **Wait()** → Blocks until the counter becomes zero (all goroutines finished).  
+
+---
+
+### Mutex (Mutual Exclusion)
+
+- A **mutex** is a lock that ensures only **one goroutine** can access a shared resource at a time.  
+- The zero value of a mutex is an unlocked mutex.  
+- A mutex must not be copied after first use.  
+
+**Lock/Unlock behavior:**  
+- When one goroutine locks the mutex, no other goroutine can access that memory until it is unlocked.  
+
+**Read-Write Mutex:**  
+- Multiple goroutines can **read** a resource simultaneously.  
+- But **only one goroutine can write**, and during writing, no one else can read or write.
+
+---
+
+### Race Conditions
+
+A **race condition** happens when multiple goroutines access the same memory at the same time, and at least one of them writes to it.
+
+👉 Use:  
+```bash
+go run --race .
+````
+
+This checks for race condition errors in a Go program (exit status 66 if found).
+Race conditions can be solved using **mutexes**.
+
+---
+
+### Channels
+
+* **Channels** allow goroutines to communicate with each other by passing values.
+* A send operation (`ch <- value`) will block until another goroutine is ready to receive from the channel.
+* Similarly, a receive operation (`<-ch`) will block until there is data to receive.
+* This ensures synchronization but can lead to **deadlocks** if nobody is listening.
+
+⚠️ Always design your channel communication carefully, often together with WaitGroups.
+
+---
+
