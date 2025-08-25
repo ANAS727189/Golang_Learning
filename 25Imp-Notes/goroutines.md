@@ -92,3 +92,247 @@ Race conditions can be solved using **mutexes**.
 
 ---
 
+
+# 📝 Golang Interview Prep Q\&A Sheet
+
+---
+
+## **1. Basics**
+
+**Q:** Difference between `var`, `:=`, and `const` in Go?
+**A:**
+
+* `var` → declares variable, type optional, works globally & locally.
+* `:=` → short-hand declaration, **only inside functions**, type inferred.
+* `const` → immutable, compile-time constant.
+
+---
+
+**Q:** What are zero values in Go?
+**A:**
+
+* `int → 0`
+* `string → ""`
+* `bool → false`
+* `pointer/map/slice/channel/function → nil`
+
+---
+
+**Q:** Difference between array and slice?
+**A:**
+
+* Array = fixed length, value type, `[3]int{1,2,3}`.
+* Slice = dynamic, reference type, internally stores (pointer + length + capacity).
+
+---
+
+## **2. Memory & Pointers**
+
+**Q:** What is the difference between passing by value and passing by pointer in Go?
+**A:**
+
+* Go **always passes by value**.
+* But when you pass a pointer (address), the callee can mutate the underlying object.
+
+---
+
+**Q:** What’s the difference between `new` and `make`?
+**A:**
+
+* `new(T)` → allocates zeroed storage for type `T`, returns `*T`.
+* `make(T, args)` → used only for slices, maps, and channels. Initializes internal data structures.
+
+---
+
+## **3. Concurrency**
+
+**Q:** Buffered vs Unbuffered channel?
+**A:**
+
+* **Unbuffered** → send blocks until receiver ready.
+* **Buffered** → send blocks only when buffer full, receive blocks only when empty.
+
+---
+
+**Q:** What happens if you send to a channel with no receiver?
+**A:**
+
+* On **unbuffered channel** → deadlock.
+* On **buffered channel** → blocks only if buffer is full.
+
+---
+
+**Q:** How do you prevent goroutines from leaking?
+**A:**
+
+* Always provide a way to cancel goroutines (`context.Context`, closing channels).
+* Example:
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+go func() {
+    select {
+    case <-ctx.Done():
+        return
+    }
+}()
+cancel()
+```
+
+---
+
+**Q:** What’s the Go memory model guarantee for goroutines?
+**A:**
+
+* Without synchronization, goroutines may see stale values.
+* Use **channels** or **sync primitives** (`Mutex`, `WaitGroup`, `atomic`) to guarantee visibility of writes across goroutines.
+
+---
+
+**Q:** What’s wrong with this code?
+
+```go
+for i := 0; i < 5; i++ {
+    go func() {
+        fmt.Println(i)
+    }()
+}
+```
+
+**A:** Closure captures loop variable → prints `5` multiple times.
+✅ Fix:
+
+```go
+for i := 0; i < 5; i++ {
+    go func(n int) {
+        fmt.Println(n)
+    }(i)
+}
+```
+
+---
+
+## **4. Context & Cancellation**
+
+**Q:** Why is `context.Context` important?
+**A:**
+
+* For **cancellation, timeouts, deadlines, request-scoped values** across goroutines.
+* Common in DB queries, API calls, servers.
+
+Example:
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+defer cancel()
+```
+
+---
+
+**Q:** Why is it bad to pass `context.Background()` inside functions directly?
+**A:**
+
+* Because you lose cancellation signals from parent.
+* Always pass `ctx` from the caller.
+
+---
+
+## **5. Interfaces & OOP**
+
+**Q:** How does Go handle polymorphism?
+**A:**
+
+* Interfaces are **satisfied implicitly**.
+* Any type that has the required methods implements the interface.
+
+---
+
+**Q:** Difference between `interface{}` and `any` in Go?
+**A:**
+
+* Both are the same (Go 1.18+ introduced `any` as alias for `interface{}`).
+
+---
+
+**Q:** What is the difference between value receiver vs pointer receiver in methods?
+**A:**
+
+* Value receiver → works on a copy, cannot mutate original.
+* Pointer receiver → can modify original, avoids copying large structs.
+
+---
+
+## **6. Errors & Testing**
+
+**Q:** How does Go handle errors?
+**A:**
+
+* Errors are values implementing `error` interface.
+* Idiomatic Go uses:
+
+```go
+if err != nil {
+    return err
+}
+```
+
+* Prefer wrapping errors (`fmt.Errorf("msg: %w", err)`).
+
+---
+
+**Q:** How do you test in Go?
+**A:**
+
+* Write `_test.go` files.
+* Use `testing` package.
+
+```go
+func TestAdd(t *testing.T) {
+    got := Add(2, 3)
+    want := 5
+    if got != want {
+        t.Errorf("got %d, want %d", got, want)
+    }
+}
+```
+
+---
+
+## **7. Go Runtime & Advanced**
+
+**Q:** How does Go manage memory (GC)?
+**A:**
+
+* Go uses a **concurrent, tri-color, mark-and-sweep garbage collector**.
+* Low pause times, optimized for latency.
+
+---
+
+**Q:** How are goroutines scheduled?
+**A:**
+
+* Go uses an **M\:N scheduler** (Goroutines mapped to OS threads).
+* Components:
+
+  * **M** = OS threads
+  * **P** = processors (logical CPU context)
+  * **G** = goroutines
+
+---
+
+**Q:** How to limit concurrency?
+**A:**
+
+* Use buffered channels as semaphores.
+* Example:
+
+```go
+sem := make(chan struct{}, 5) // allow 5 goroutines max
+for _, job := range jobs {
+    sem <- struct{}{}
+    go func(job Job) {
+        defer func() { <-sem }()
+        process(job)
+    }(job)
+}
+```
